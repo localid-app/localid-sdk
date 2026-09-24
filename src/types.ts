@@ -157,6 +157,20 @@ export interface LocalIDResponse {
   assertionExpiresAt?: number;     // unix seconds
 }
 
+/** Why the backend refused an action under a delegation. */
+export type DelegationDenyReason =
+  | 'not_found'           // unknown id, or it was granted to another app
+  | 'revoked'             // the person revoked it in LocalID
+  | 'expired'
+  | 'scope_not_granted'
+  | 'amount_required'     // the grant has a spending cap, so pass the amount
+  | 'amount_exceeds_cap';
+
+/** Result of checkDelegation(). Act only when `allowed` is true. */
+export type DelegationDecision =
+  | { allowed: true; expiresAt: number }   // unix seconds
+  | { allowed: false; reason: DelegationDenyReason };
+
 export interface LocalIDError {
   code:
     | 'INVALID_SIGNATURE'
@@ -171,6 +185,7 @@ export interface LocalIDError {
     | 'AGENT_ACTION_DENIED'        // UC1: user denied the agent action
     | 'DELEGATION_DENIED'          // UC2: user denied the delegation request
     | 'AGE_REQUIREMENT_NOT_MET'    // UC4: enrolled DOB does not meet minAge
+    | 'DELEGATION_UNAVAILABLE'     // UC2: approved, but LocalID could not record the grant — retry
     | 'UNKNOWN';
   message: string;
 }

@@ -114,8 +114,18 @@ export interface LocalIDResponse {
     ageThreshold?: number;
     assertionExpiresAt?: number;
 }
+/** Why the backend refused an action under a delegation. */
+export type DelegationDenyReason = 'not_found' | 'revoked' | 'expired' | 'scope_not_granted' | 'amount_required' | 'amount_exceeds_cap';
+/** Result of checkDelegation(). Act only when `allowed` is true. */
+export type DelegationDecision = {
+    allowed: true;
+    expiresAt: number;
+} | {
+    allowed: false;
+    reason: DelegationDenyReason;
+};
 export interface LocalIDError {
-    code: 'INVALID_SIGNATURE' | 'DECRYPTION_FAILED' | 'REPLAY_DETECTED' | 'EXPIRED' | 'REQUEST_ID_MISMATCH' | 'CANCELLED' | 'TIMEOUT' | 'FACE_NOT_ENROLLED' | 'FACE_VERIFICATION_FAILED' | 'AGENT_ACTION_DENIED' | 'DELEGATION_DENIED' | 'AGE_REQUIREMENT_NOT_MET' | 'UNKNOWN';
+    code: 'INVALID_SIGNATURE' | 'DECRYPTION_FAILED' | 'REPLAY_DETECTED' | 'EXPIRED' | 'REQUEST_ID_MISMATCH' | 'CANCELLED' | 'TIMEOUT' | 'FACE_NOT_ENROLLED' | 'FACE_VERIFICATION_FAILED' | 'AGENT_ACTION_DENIED' | 'DELEGATION_DENIED' | 'AGE_REQUIREMENT_NOT_MET' | 'DELEGATION_UNAVAILABLE' | 'UNKNOWN';
     message: string;
 }
 export interface LocalIDConfig {

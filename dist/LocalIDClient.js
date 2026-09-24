@@ -120,6 +120,19 @@ class LocalIDClient {
             this.emitError({ code: 'UNKNOWN', message: `Failed to open LocalID: ${String(err)}` });
         });
     }
+    /**
+     * UC2: Ask the LocalID backend whether the agent may act under a delegation.
+     * Call this before EVERY action, including repeats: it is what makes a
+     * revocation or expiry take effect immediately. Act only on `allowed: true`.
+     * Rejects if no backend is configured or the backend could not be reached;
+     * treat that as "not allowed".
+     */
+    async checkDelegation(delegationId, action) {
+        if (!this.backendClient) {
+            throw new Error('[localid-sdk] checkDelegation requires the `backend` config option');
+        }
+        return this.backendClient.checkDelegation(delegationId, action);
+    }
     /** Initiate an identity attribute request against LocalID. */
     requestIdentity(fields, opts = {}) {
         const built = (0, builder_1.buildShareUrl)(this.config.appId, this.config.returnScheme, fields, this.localidPublicKey ?? undefined, this.signingKey ?? undefined, opts.dynamicFaceAuth);

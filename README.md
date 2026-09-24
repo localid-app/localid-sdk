@@ -39,9 +39,9 @@ All payloads are **end-to-end encrypted** (X25519 ECDH + AES-256-GCM) and **sign
 The SDK is distributed as a tarball on the [Releases](https://github.com/localid-app/localid-sdk/releases/latest) page (it is not yet on the npm registry). Download `localid-sdk-{version}.tgz`, then:
 
 ```bash
-npm install ./localid-sdk-0.1.0.tgz
+npm install ./localid-sdk-0.1.1.tgz
 # or
-yarn add ./localid-sdk-0.1.0.tgz
+yarn add ./localid-sdk-0.1.1.tgz
 ```
 
 The package installs as `@localid/sdk`.

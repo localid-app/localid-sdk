@@ -1,4 +1,4 @@
-import { LocalIDConfig, LocalIDResponse, LocalIDError, IdentityField, SdkAgentAuthRequest, SdkDelegationRequest } from './types';
+import { LocalIDConfig, LocalIDResponse, LocalIDError, IdentityField, SdkAgentAuthRequest, SdkDelegationRequest, DelegationScope, DelegationDecision } from './types';
 type SuccessCallback = (response: LocalIDResponse) => void;
 type ErrorCallback = (error: LocalIDError) => void;
 /** Function that opens a URL. Defaults to React Native's Linking.openURL but injectable for testing. */
@@ -59,6 +59,17 @@ export declare class LocalIDClient {
     requestAgeAssertion(minAge: number, validForSeconds?: number, opts?: {
         dynamicFaceAuth?: boolean;
     }): void;
+    /**
+     * UC2: Ask the LocalID backend whether the agent may act under a delegation.
+     * Call this before EVERY action, including repeats: it is what makes a
+     * revocation or expiry take effect immediately. Act only on `allowed: true`.
+     * Rejects if no backend is configured or the backend could not be reached;
+     * treat that as "not allowed".
+     */
+    checkDelegation(delegationId: string, action: {
+        scope: DelegationScope;
+        amount?: number;
+    }): Promise<DelegationDecision>;
     /** Initiate an identity attribute request against LocalID. */
     requestIdentity(fields: IdentityField[], opts?: {
         dynamicFaceAuth?: boolean;

@@ -1,4 +1,4 @@
-import { BackendConfig } from '../types';
+import { BackendConfig, DelegationDecision, DelegationScope } from '../types';
 export declare class BackendClient {
     private readonly config;
     private backendPubKey;
@@ -12,5 +12,14 @@ export declare class BackendClient {
         localidPublicKey: string;
         signingKey: string;
     }>;
+    /**
+     * Ask the backend whether an action is allowed under a delegation. Sent as
+     * plain signed JSON: the scope and amount are not personal data.
+     * Throws when no decision could be obtained, so an outage is never read as "allowed".
+     */
+    checkDelegation(delegationId: string, action: {
+        scope: DelegationScope;
+        amount?: number;
+    }, timeoutMs?: number): Promise<DelegationDecision>;
 }
 //# sourceMappingURL=backendClient.d.ts.map

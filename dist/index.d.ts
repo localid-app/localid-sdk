@@ -1,5 +1,5 @@
 export { LocalIDClient } from './LocalIDClient';
-export type { LocalIDConfig, BackendConfig, LocalIDResponse, LocalIDError, IdentityField, AgentScope, DelegationScope, SdkAuthRequest, SdkIdentityRequest, SdkAgentAuthRequest, SdkDelegationRequest, SdkAgeAssertionRequest, SdkRequest, SdkResponse, } from './types';
+export type { LocalIDConfig, BackendConfig, LocalIDResponse, LocalIDError, IdentityField, AgentScope, DelegationScope, DelegationDecision, DelegationDenyReason, SdkAuthRequest, SdkIdentityRequest, SdkAgentAuthRequest, SdkDelegationRequest, SdkAgeAssertionRequest, SdkRequest, SdkResponse, } from './types';
 export { generateEphemeralKeyPair, computeSharedSecret } from './crypto/keyPair';
 export { toBase64Url, fromBase64Url } from './crypto/encrypt';
 export { sign, verify } from './crypto/signing';

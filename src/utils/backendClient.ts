@@ -1,4 +1,4 @@
-import { BackendConfig } from '../types';
+import { BackendConfig, DelegationDecision, DelegationScope } from '../types';
 import { encryptHttpRequest } from './backendCrypto';
 import { hmac } from '@noble/hashes/hmac';
 import { sha256 } from '@noble/hashes/sha2';
@@ -121,5 +121,42 @@ export class BackendClient {
       throw new Error('[localid-sdk] /apps/init response missing localidPublicKey or signingKey');
     }
     return result;
+  }
+
+  /**
+   * Ask the backend whether an action is allowed under a delegation. Sent as
+   * plain signed JSON: the scope and amount are not personal data.
+   * Throws when no decision could be obtained, so an outage is never read as "allowed".
+   */
+  async checkDelegation(
+    delegationId: string,
+    action: { scope: DelegationScope; amount?: number },
+    timeoutMs = 30000,
+  ): Promise<DelegationDecision> {
+    const path = `/delegations/${encodeURIComponent(delegationId)}/check`;
+    const bodyStr = JSON.stringify(action);
+    const timestamp = Date.now().toString();
+    const signature = hmacSign(`${this.config.appId}:${timestamp}:${sha256Hex(bodyStr)}`, this.config.appSecret);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${this.config.url}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-LocalID-App-Id': this.config.appId,
+          'X-LocalID-Timestamp': timestamp,
+          'X-LocalID-Signature': signature,
+        },
+        body: bodyStr,
+        signal: controller.signal,
+      });
+      if (res.status !== 200) throw new Error(`[localid-sdk] delegation check failed: ${res.status}`);
+      const decision = await res.json() as DelegationDecision;
+      if (typeof decision.allowed !== 'boolean') throw new Error('[localid-sdk] delegation check returned no decision');
+      return decision;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }

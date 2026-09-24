@@ -2,7 +2,7 @@ import { buildAuthUrl, buildShareUrl, buildAgentAuthUrl, buildDelegationUrl, bui
 import { parseCallback, PendingEntry } from './deeplink/parser';
 import { registerApp, trackEvent, setPlan } from './monetization/stubs';
 import { BackendClient } from './utils/backendClient';
-import { LocalIDConfig, LocalIDResponse, LocalIDError, IdentityField, SdkAgentAuthRequest, SdkDelegationRequest, DelegationScope } from './types';
+import { LocalIDConfig, LocalIDResponse, LocalIDError, IdentityField, SdkAgentAuthRequest, SdkDelegationRequest, DelegationScope, DelegationDecision } from './types';
 
 type SuccessCallback = (response: LocalIDResponse) => void;
 type ErrorCallback = (error: LocalIDError) => void;
@@ -169,6 +169,23 @@ export class LocalIDClient {
       this.pendingRequests.delete(built.requestId);
       this.emitError({ code: 'UNKNOWN', message: `Failed to open LocalID: ${String(err)}` });
     });
+  }
+
+  /**
+   * UC2: Ask the LocalID backend whether the agent may act under a delegation.
+   * Call this before EVERY action, including repeats: it is what makes a
+   * revocation or expiry take effect immediately. Act only on `allowed: true`.
+   * Rejects if no backend is configured or the backend could not be reached;
+   * treat that as "not allowed".
+   */
+  async checkDelegation(
+    delegationId: string,
+    action: { scope: DelegationScope; amount?: number },
+  ): Promise<DelegationDecision> {
+    if (!this.backendClient) {
+      throw new Error('[localid-sdk] checkDelegation requires the `backend` config option');
+    }
+    return this.backendClient.checkDelegation(delegationId, action);
   }
 
   /** Initiate an identity attribute request against LocalID. */

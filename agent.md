@@ -81,11 +81,24 @@ response.grantedScopes        // the scopes approved
 response.delegationExpiresAt  // unix seconds
 ```
 
-**Your agent is responsible for enforcing the grant.** LocalID shows the terms, records the grant on the phone and returns it to you; it does not check later actions against it. Before each action the agent must confirm the action is within `grantedScopes`, at or under `maxAmountPerAction`, and before `delegationExpiresAt`.
+**Check with LocalID before every action.** The grant is recorded on the LocalID backend, which decides each action against the scopes, the per-action cap and the expiry. Ask it every time, including for repeats:
 
-The person can revoke a grant from LocalID's Identities screen. Revocation is not currently sent to your app, so do not rely on hearing about it. Keep grants short, and fall back to `requestAgentAuth` for anything outside them.
+```ts
+const decision = await localid.checkDelegation(response.delegationId, { scope: 'purchase', amount: 189.5 });
 
-The grant lasts as long as you request; the person sees the expiry before approving. Ask for the shortest window that does the job.
+if (decision.allowed) {
+  // go ahead
+} else {
+  // decision.reason: 'revoked' | 'expired' | 'scope_not_granted'
+  //                | 'amount_exceeds_cap' | 'amount_required' | 'not_found'
+}
+```
+
+- Pass `amount` whenever the grant has a cap; without it the check returns `amount_required`.
+- `checkDelegation` rejects if the backend cannot be reached. Treat that as a denial and do not act.
+- It needs the `backend` option from Setup, because the request is signed with your app secret. A grant can only be checked by the app it was granted to.
+
+The person can revoke a grant at any time from LocalID's Identities screen. The backend refuses the next check with `revoked`, so the revocation takes effect immediately. Your app is not told when it happens, which is why you check before each action. For anything a grant does not cover, fall back to `requestAgentAuth`.
 
 ## 3. Share verified details
 
@@ -142,6 +155,7 @@ Failures that stop a request arrive in `onError`:
 | `AGE_REQUIREMENT_NOT_MET` | The person is under the requested age |
 | `FACE_VERIFICATION_FAILED` | Dynamic face auth did not match |
 | `FACE_NOT_ENROLLED` | Dynamic face auth was requested but no face is enrolled |
+| `DELEGATION_UNAVAILABLE` | The person approved a delegation, but LocalID could not record it. Nothing was granted; try again |
 | `INVALID_SIGNATURE` | The callback was not signed by LocalID; discard it |
 | `REPLAY_DETECTED` | The callback was already used; discard it |
 | `EXPIRED` | The callback's timestamp is outside the 5-minute window; discard it |
@@ -153,4 +167,5 @@ Failures that stop a request arrive in `onError`:
 - **Signed.** Callbacks are signed with your app's key. `handleCallback` rejects anything that fails verification.
 - **Single use.** Each callback carries a nonce and is rejected if seen again.
 - **Expiring.** Approvals, grants and age assertions all carry an expiry. Honour it.
+- **Revocable.** Delegations are enforced by the LocalID backend on every `checkDelegation`, so a revoked or expired grant stops working at once.
 - **Person-approved.** Nothing is returned without the person approving on their phone, with Face ID or their passcode.

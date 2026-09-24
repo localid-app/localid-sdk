@@ -7,6 +7,8 @@ export type {
   IdentityField,
   AgentScope,
   DelegationScope,
+  DelegationDecision,
+  DelegationDenyReason,
   SdkAuthRequest,
   SdkIdentityRequest,
   SdkAgentAuthRequest,
