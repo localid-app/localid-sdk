@@ -30,7 +30,7 @@ export function encryptHttpRequest(
   const sdkPriv = randomBytes(32);
   const sdkPub = x25519.getPublicKey(sdkPriv);
   const shared = x25519.getSharedSecret(sdkPriv, hexToBytes(backendPubKeyHex));
-  const key = hkdf(sha256, shared, new Uint8Array(0), utf8ToBytes('authify-http-request-v1'), 32);
+  const key = hkdf(sha256, shared, new Uint8Array(0), utf8ToBytes('localid-http-request-v1'), 32);
   const nonce = randomBytes(12);
   const pt = utf8ToBytes(JSON.stringify(body));
   const ct = gcm(key, nonce).encrypt(pt);
@@ -49,7 +49,7 @@ export function decryptHttpResponse(
   sdkEphPrivKeyHex: string,
 ): unknown {
   const shared = x25519.getSharedSecret(hexToBytes(sdkEphPrivKeyHex), hexToBytes(response.pk));
-  const key = hkdf(sha256, shared, new Uint8Array(0), utf8ToBytes('authify-http-response-v1'), 32);
+  const key = hkdf(sha256, shared, new Uint8Array(0), utf8ToBytes('localid-http-response-v1'), 32);
   const data = fromBase64Url(response.c);
   const nonce = data.slice(0, 12);
   const ct = data.slice(12);

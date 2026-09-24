@@ -53,19 +53,19 @@ export class BackendClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Authify-App-Id': this.config.appId,
-          'X-Authify-Timestamp': timestamp,
-          'X-Authify-Signature': signature,
+          'X-LocalID-App-Id': this.config.appId,
+          'X-LocalID-Timestamp': timestamp,
+          'X-LocalID-Signature': signature,
         },
         body: encryptedBodyStr,
         signal: controller.signal,
       });
 
       if (!res.ok) {
-        console.warn(`[authify-sdk] ${path} failed: ${res.status}`);
+        console.warn(`[localid-sdk] ${path} failed: ${res.status}`);
       }
     } catch (err) {
-      console.warn(`[authify-sdk] ${path} error: ${String(err)}`);
+      console.warn(`[localid-sdk] ${path} error: ${String(err)}`);
     } finally {
       clearTimeout(timer);
     }
@@ -98,9 +98,9 @@ export class BackendClient {
       const res = await fetch(`${this.config.url}${path}`, {
         method: 'GET',
         headers: {
-          'X-Authify-App-Id': this.config.appId,
-          'X-Authify-Timestamp': timestamp,
-          'X-Authify-Signature': signature,
+          'X-LocalID-App-Id': this.config.appId,
+          'X-LocalID-Timestamp': timestamp,
+          'X-LocalID-Signature': signature,
         },
         signal: controller.signal,
       });
@@ -115,10 +115,10 @@ export class BackendClient {
     }
   }
 
-  async fetchInitKeys(): Promise<{ authifyPublicKey: string; signingKey: string }> {
-    const result = await this.getWithHmac<{ authifyPublicKey: string; signingKey: string }>('/apps/init');
-    if (!result.authifyPublicKey || !result.signingKey) {
-      throw new Error('[authify-sdk] /apps/init response missing authifyPublicKey or signingKey');
+  async fetchInitKeys(): Promise<{ localidPublicKey: string; signingKey: string }> {
+    const result = await this.getWithHmac<{ localidPublicKey: string; signingKey: string }>('/apps/init');
+    if (!result.localidPublicKey || !result.signingKey) {
+      throw new Error('[localid-sdk] /apps/init response missing localidPublicKey or signingKey');
     }
     return result;
   }

@@ -1,35 +1,35 @@
-You are a principal mobile and security engineer working on the @authify/sdk npm package.
+You are a principal mobile and security engineer working on the @localid/sdk npm package.
 
-This is a standalone TypeScript package that provides a typed client for the Authify deep-link protocol. It has no react-native dependency — the openUrl function is injected by the caller.
+This is a standalone TypeScript package that provides a typed client for the LocalID deep-link protocol. It has no react-native dependency — the openUrl function is injected by the caller.
 
 ## Purpose
 
 Third-party apps install this SDK to:
-1. Build encrypted, signed deep-link requests to Authify
-2. Decrypt and verify encrypted callback responses from Authify
+1. Build encrypted, signed deep-link requests to LocalID
+2. Decrypt and verify encrypted callback responses from LocalID
 
 ## Package Info
 
-Name: `@authify/sdk`
+Name: `@localid/sdk`
 Version: `0.1.0`
-Location: `auth/authify-sdk/` (monorepo; referenced by TestAuthify as `file:../authify-sdk`)
+Location: `auth/localid-sdk/` (monorepo; referenced by DriveIQ as `file:../localid-sdk`)
 
 ## Crypto Stack
 
 Library versions: `@noble/curves` v1.8.x, `@noble/ciphers` v0.6.0, `@noble/hashes` (matching)
-Note: Authify app uses `@noble/curves` v2.x and `@noble/ciphers` v2.x — different major versions but the crypto output is compatible.
+Note: LocalID app uses `@noble/curves` v2.x and `@noble/ciphers` v2.x — different major versions but the crypto output is compatible.
 
-Request encryption (SDK → Authify):
+Request encryption (SDK → LocalID):
 - Ephemeral X25519 keypair generated per request
-- `sharedSecret = ECDH(sdkEphPriv, AUTHIFY_DEV_PUBLIC_KEY)`
-- `encKey = HKDF-SHA256(sharedSecret, salt="authify-request-v1", length=32)`
+- `sharedSecret = ECDH(sdkEphPriv, LOCALID_DEV_PUBLIC_KEY)`
+- `encKey = HKDF-SHA256(sharedSecret, salt="localid-request-v1", length=32)`
 - `ciphertext = AES-256-GCM(encKey, 12-byte-nonce, JSON(request))`
-- URL carries `pk={sdkEphPubKeyHex}` so Authify can perform ECDH on its side
+- URL carries `pk={sdkEphPubKeyHex}` so LocalID can perform ECDH on its side
 
-Response decryption (Authify → SDK):
-- Authify sends `pk={authifyEphPubKeyHex}` in callback
-- `sharedSecret = ECDH(sdkEphPriv, authifyEphPub)` — same secret as Authify used
-- `encKey = HKDF-SHA256(sharedSecret, salt="authify-response-v1", length=32)`
+Response decryption (LocalID → SDK):
+- LocalID sends `pk={localidEphPubKeyHex}` in callback
+- `sharedSecret = ECDH(sdkEphPriv, localidEphPub)` — same secret as LocalID used
+- `encKey = HKDF-SHA256(sharedSecret, salt="localid-response-v1", length=32)`
 - SDK decrypts using its stored sdkEphPrivKey for the matching requestId
 
 Signing: HMAC-SHA256 over full URL before `&s=`. Double-HMAC for constant-time verify.
@@ -41,10 +41,10 @@ Replay prevention: 32-byte hex nonce + Unix ts; `|now - ts| > 300s` → reject; 
 ```
 src/
   index.ts              ← public exports
-  AuthifyClient.ts      ← stateful client; Map<requestId, sdkEphPrivKeyHex>
-  types.ts              ← SdkAuthRequest, SdkIdentityRequest, SdkResponse, AuthifyResponse
+  LocalIDClient.ts      ← stateful client; Map<requestId, sdkEphPrivKeyHex>
+  types.ts              ← SdkAuthRequest, SdkIdentityRequest, SdkResponse, LocalIDResponse
   crypto/
-    devKeys.ts          ← DEV_ONLY: AUTHIFY_DEV_PUBLIC_KEY + DEV_SIGNING_KEY
+    devKeys.ts          ← DEV_ONLY: LOCALID_DEV_PUBLIC_KEY + DEV_SIGNING_KEY
     keyPair.ts          ← generateEphemeralKeyPair()
     encrypt.ts          ← encryptRequest(), decryptResponse(), toBase64Url()
     signing.ts          ← sign(), verify() (double-HMAC)
@@ -57,10 +57,10 @@ src/
     stubs.ts            ← registerApp(), trackEvent(), setPlan() — no-ops, TODO(PHASE_2)
 ```
 
-## AuthifyClient API
+## LocalIDClient API
 
 ```typescript
-const sdk = new AuthifyClient(
+const sdk = new LocalIDClient(
   { appId: 'com.myapp', returnScheme: 'myapp' },
   Linking.openURL.bind(Linking),   // or any (url: string) => Promise<void>
 );
@@ -68,17 +68,17 @@ const sdk = new AuthifyClient(
 sdk.onSuccess(response => { /* response.status, response.data, response.requestId */ });
 sdk.onError(error => { /* error.code, error.message */ });
 
-sdk.login({ userIdentifier: 'user@example.com' });              // → authify://auth/v1?...
-sdk.requestIdentity(['firstName', 'lastName', 'dob']);          // → authify://share/v1?...
+sdk.login({ userIdentifier: 'user@example.com' });              // → localid://auth/v1?...
+sdk.requestIdentity(['firstName', 'lastName', 'dob']);          // → localid://share/v1?...
 
 // In your deep link handler:
-const handled = sdk.handleCallback(url);   // returns true if URL was an authify-callback
+const handled = sdk.handleCallback(url);   // returns true if URL was an localid-callback
 ```
 
 ## DEV_ONLY Keys — MUST Replace in Phase 2
 
-`src/crypto/devKeys.ts` contains hardcoded keys shared with Authify:
-- `AUTHIFY_DEV_PUBLIC_KEY` — matches `AUTHIFY_DEV_PRIVATE_KEY` in authify app
+`src/crypto/devKeys.ts` contains hardcoded keys shared with LocalID:
+- `LOCALID_DEV_PUBLIC_KEY` — matches `LOCALID_DEV_PRIVATE_KEY` in localid app
 - `DEV_SIGNING_KEY` — same on both sides
 
 These are labeled `// DEV_ONLY` with `// TODO(PHASE_2)` comments. Phase 2 migration:

@@ -1,7 +1,7 @@
 import { verify } from '../crypto/signing';
 import { decryptResponse } from '../crypto/encrypt';
 import { addNonce } from '../session/nonceStore';
-import { SdkResponse, AuthifyResponse, AuthifyError } from '../types';
+import { SdkResponse, LocalIDResponse, LocalIDError } from '../types';
 
 const MAX_AGE_SECONDS = 300; // 5 minutes
 
@@ -11,15 +11,15 @@ export interface PendingEntry {
 }
 
 export type ParseResult =
-  | { ok: true; response: AuthifyResponse }
-  | { ok: false; error: AuthifyError };
+  | { ok: true; response: LocalIDResponse }
+  | { ok: false; error: LocalIDError };
 
 /**
- * Parse and validate an incoming authify-callback deep link URL.
- * Expected format: {scheme}://authify-callback?pk={ephPubKey}&c={ciphertext}&s={sig}
+ * Parse and validate an incoming localid-callback deep link URL.
+ * Expected format: {scheme}://localid-callback?pk={ephPubKey}&c={ciphertext}&s={sig}
  *
  * @param url  The raw deep link URL received by the caller app
- * @param pendingRequests  Map of requestId → sdkEphemeralPrivKeyHex (held by AuthifyClient)
+ * @param pendingRequests  Map of requestId → sdkEphemeralPrivKeyHex (held by LocalIDClient)
  * @param signingKey  Per-app HMAC signing key (hex). Omit to use the DEV_ONLY key.
  */
 export function parseCallback(
@@ -28,8 +28,8 @@ export function parseCallback(
   signingKey?: string,
 ): ParseResult {
   try {
-    if (!url.includes('authify-callback')) {
-      return { ok: false, error: { code: 'UNKNOWN', message: 'Not an authify callback URL' } };
+    if (!url.includes('localid-callback')) {
+      return { ok: false, error: { code: 'UNKNOWN', message: 'Not an localid callback URL' } };
     }
 
     const queryStart = url.indexOf('?');
@@ -39,7 +39,7 @@ export function parseCallback(
 
     const params = parseParams(url.slice(queryStart + 1));
 
-    // Error callback format: ?error=...&s=... (no pk/c — sent by Authify for rate-limit etc.)
+    // Error callback format: ?error=...&s=... (no pk/c — sent by LocalID for rate-limit etc.)
     if (params['error'] && !params['pk']) {
       const unsigned = url.slice(0, url.lastIndexOf('&s='));
       const s = params['s'] ?? '';
@@ -107,9 +107,17 @@ export function parseCallback(
     if (decrypted.status === 'error') {
       return {
         ok: false,
-        error: { code: 'UNKNOWN', message: decrypted.message ?? 'Authify returned an error' },
+        error: { code: 'UNKNOWN', message: decrypted.message ?? 'LocalID returned an error' },
       };
     }
+
+    const d = decrypted.data ?? {};
+    const bool = (k: string): boolean | undefined =>
+      typeof d[k] === 'boolean' ? (d[k] as boolean) : undefined;
+    const num  = (k: string): number | undefined =>
+      typeof d[k] === 'number' ? (d[k] as number) : undefined;
+    const str  = (k: string): string | undefined =>
+      typeof d[k] === 'string' ? (d[k] as string) : undefined;
 
     return {
       ok: true,
@@ -118,6 +126,22 @@ export function parseCallback(
         data: decrypted.data,
         requestId: decrypted.requestId,
         ts: decrypted.ts,
+        dynamicFaceAuthVerified: bool('dynamicFaceAuthVerified'),
+        // UC1
+        agentActionApproved: bool('agentActionApproved'),
+        approvedAction:      str('approvedAction'),
+        approvedScope:       str('approvedScope'),
+        approvalExpiresAt:   num('approvalExpiresAt'),
+        // UC2
+        delegationGranted:   bool('delegationGranted'),
+        delegationId:        str('delegationId'),
+        grantedScopes:       Array.isArray(d['grantedScopes']) ? (d['grantedScopes'] as import('../types').DelegationScope[]) : undefined,
+        delegationExpiresAt: num('delegationExpiresAt'),
+        // UC4
+        ageAssertionGranted: bool('ageAssertionGranted'),
+        isAboveThreshold:    bool('isAboveThreshold'),
+        ageThreshold:        num('ageThreshold'),
+        assertionExpiresAt:  num('assertionExpiresAt'),
       },
     };
   } catch (err) {

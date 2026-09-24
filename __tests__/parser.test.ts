@@ -1,7 +1,7 @@
 /**
- * Tests for parseCallback — the SDK-side parser for authify callback URLs.
+ * Tests for parseCallback — the SDK-side parser for localid callback URLs.
  *
- * Each test builds a valid callback URL the same way authify's callbackDispatch.ts
+ * Each test builds a valid callback URL the same way localid's callbackDispatch.ts
  * does (ECDH encrypt with response keypair → HMAC sign), then passes it through
  * parseCallback() to verify the full round-trip.
  */
@@ -16,7 +16,7 @@ import { generateEphemeralKeyPair } from '../src/crypto/keyPair';
 import { clearNonces } from '../src/session/nonceStore';
 
 const DEV_SIGNING_KEY = '1d69f40e6c2e302fd0bd091800df4171343717582f13d1a265bbc4230be7829a';
-const RETURN_SCHEME = 'testauthify';
+const RETURN_SCHEME = 'driveiq';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ interface CallbackOpts {
 }
 
 /**
- * Build a valid callback URL the way authify's callbackDispatch.ts does.
+ * Build a valid callback URL the way localid's callbackDispatch.ts does.
  * Returns the URL and the SDK ephemeral private key needed to decrypt it.
  */
 function buildCallbackUrl(sdkEphPubKeyHex: string, opts: CallbackOpts = {}): string {
@@ -59,13 +59,13 @@ function buildCallbackUrl(sdkEphPubKeyHex: string, opts: CallbackOpts = {}): str
     message: opts.message,
   });
 
-  // Authify generates an ephemeral keypair for the response
-  const authifyEphPriv = x25519.utils.randomPrivateKey();
-  const authifyEphPub = x25519.getPublicKey(authifyEphPriv);
+  // LocalID generates an ephemeral keypair for the response
+  const localidEphPriv = x25519.utils.randomPrivateKey();
+  const localidEphPub = x25519.getPublicKey(localidEphPriv);
 
-  // ECDH(authifyEphPriv, sdkEphPub) → HKDF("authify-response-v1") → AES key
-  const sharedSecret = x25519.getSharedSecret(authifyEphPriv, hexToBytes(sdkEphPubKeyHex));
-  const encKey = hkdf(sha256, sharedSecret, new Uint8Array(0), utf8ToBytes('authify-response-v1'), 32);
+  // ECDH(localidEphPriv, sdkEphPub) → HKDF("localid-response-v1") → AES key
+  const sharedSecret = x25519.getSharedSecret(localidEphPriv, hexToBytes(sdkEphPubKeyHex));
+  const encKey = hkdf(sha256, sharedSecret, new Uint8Array(0), utf8ToBytes('localid-response-v1'), 32);
 
   // AES-256-GCM encrypt
   const gcmNonce = randomBytes(12);
@@ -81,8 +81,8 @@ function buildCallbackUrl(sdkEphPubKeyHex: string, opts: CallbackOpts = {}): str
   }
 
   const c = toBase64Url(concatBytes(gcmNonce, ciphertext));
-  const pk = bytesToHex(authifyEphPub);
-  const unsigned = `${RETURN_SCHEME}://authify-callback?pk=${pk}&c=${c}`;
+  const pk = bytesToHex(localidEphPub);
+  const unsigned = `${RETURN_SCHEME}://localid-callback?pk=${pk}&c=${c}`;
 
   // HMAC-SHA256 sign
   const sigKey = hexToBytes(DEV_SIGNING_KEY);
@@ -189,7 +189,7 @@ describe('parseCallback — signature validation', () => {
     const url = buildCallbackUrl(sdkKP.publicKeyHex, { requestId: 'req-mod' });
 
     // Tamper: replace the scheme to simulate URL modification
-    const tampered = url.replace('testauthify://', 'attacker://');
+    const tampered = url.replace('driveiq://', 'attacker://');
     const result = parseCallback(tampered, pending);
 
     expect(result.ok).toBe(false);
@@ -262,17 +262,17 @@ describe('parseCallback — timestamp checks', () => {
   });
 });
 
-// ── Non-authify URLs ──────────────────────────────────────────────────────────
+// ── Non-localid URLs ──────────────────────────────────────────────────────────
 
-describe('parseCallback — non-authify URLs', () => {
+describe('parseCallback — non-localid URLs', () => {
   it('returns ok: false for a URL that is not a callback URL', () => {
-    const result = parseCallback('testauthify://some-other-route?foo=bar', new Map());
+    const result = parseCallback('driveiq://some-other-route?foo=bar', new Map());
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('UNKNOWN');
   });
 
   it('returns ok: false for a callback URL with no query params', () => {
-    const result = parseCallback('testauthify://authify-callback', new Map());
+    const result = parseCallback('driveiq://localid-callback', new Map());
     expect(result.ok).toBe(false);
   });
 

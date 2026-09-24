@@ -3,7 +3,7 @@ import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha2';
 import { randomBytes, bytesToHex, hexToBytes, utf8ToBytes, concatBytes } from '@noble/hashes/utils';
 import { computeSharedSecret } from './keyPair';
-import { AUTHIFY_DEV_PUBLIC_KEY } from './devKeys';
+import { LOCALID_DEV_PUBLIC_KEY } from './devKeys';
 
 const AES_KEY_LEN = 32;
 const GCM_NONCE_LEN = 12;
@@ -57,48 +57,48 @@ export function fromBase64Url(str: string): Uint8Array {
 // ── SDK-side (encrypt request, decrypt response) ──────────────────────────────
 
 /**
- * Encrypt a request payload for Authify.
- * Uses the SDK's ephemeral private key + Authify's public key for ECDH.
+ * Encrypt a request payload for LocalID.
+ * Uses the SDK's ephemeral private key + LocalID's public key for ECDH.
  *
  * @param plaintext  JSON-serialized request object
  * @param sdkEphPrivKeyHex  SDK's ephemeral private key (hex)
- * @param authifyPublicKeyHex  Authify's public key (hex). Omit to use the DEV_ONLY key.
+ * @param localidPublicKeyHex  LocalID's public key (hex). Omit to use the DEV_ONLY key.
  * @returns base64url-encoded `nonce || ciphertext`
  */
 export function encryptRequest(
   plaintext: string,
   sdkEphPrivKeyHex: string,
-  authifyPublicKeyHex?: string,
+  localidPublicKeyHex?: string,
 ): string {
-  const pubKey = authifyPublicKeyHex ?? AUTHIFY_DEV_PUBLIC_KEY;
+  const pubKey = localidPublicKeyHex ?? LOCALID_DEV_PUBLIC_KEY;
   const sharedSecret = computeSharedSecret(sdkEphPrivKeyHex, pubKey);
-  const key = deriveKey(sharedSecret, 'authify-request-v1');
+  const key = deriveKey(sharedSecret, 'localid-request-v1');
   const encrypted = aesGcmEncrypt(key, utf8ToBytes(plaintext));
   return toBase64Url(encrypted);
 }
 
 /**
- * Decrypt a response payload from Authify.
- * Uses the SDK's stored ephemeral private key + Authify's response ephemeral public key.
+ * Decrypt a response payload from LocalID.
+ * Uses the SDK's stored ephemeral private key + LocalID's response ephemeral public key.
  *
  * @param ciphertextB64  base64url-encoded `nonce || ciphertext` from callback c= param
- * @param authifyEphPubKeyHex  Authify's response ephemeral public key from callback pk= param
+ * @param localidEphPubKeyHex  LocalID's response ephemeral public key from callback pk= param
  * @param sdkEphPrivKeyHex  SDK's ephemeral private key stored from the original request
  */
 export function decryptResponse(
   ciphertextB64: string,
-  authifyEphPubKeyHex: string,
+  localidEphPubKeyHex: string,
   sdkEphPrivKeyHex: string,
 ): string {
-  const sharedSecret = computeSharedSecret(sdkEphPrivKeyHex, authifyEphPubKeyHex);
-  const key = deriveKey(sharedSecret, 'authify-response-v1');
+  const sharedSecret = computeSharedSecret(sdkEphPrivKeyHex, localidEphPubKeyHex);
+  const key = deriveKey(sharedSecret, 'localid-response-v1');
   const data = fromBase64Url(ciphertextB64);
   const plaintext = aesGcmDecrypt(key, data);
   return new TextDecoder().decode(plaintext);
 }
 
-// ── Authify-side helpers (re-exported for use in authify app) ────────────────
-// These are duplicated in authify/src/crypto/encrypt.ts to keep repos independent.
+// ── LocalID-side helpers (re-exported for use in localid app) ────────────────
+// These are duplicated in localid/src/crypto/encrypt.ts to keep repos independent.
 
 export {
   deriveKey,

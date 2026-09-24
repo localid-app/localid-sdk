@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseCallback = exports.buildShareUrl = exports.buildAuthUrl = exports.hasNonce = exports.addNonce = exports.generateNonce = exports.verify = exports.sign = exports.fromBase64Url = exports.toBase64Url = exports.computeSharedSecret = exports.generateEphemeralKeyPair = exports.AuthifyClient = void 0;
-var AuthifyClient_1 = require("./AuthifyClient");
-Object.defineProperty(exports, "AuthifyClient", { enumerable: true, get: function () { return AuthifyClient_1.AuthifyClient; } });
-// Crypto utilities needed by the Authify host app (re-exported for reuse)
+exports.parseCallback = exports.buildAgeAssertionUrl = exports.buildDelegationUrl = exports.buildAgentAuthUrl = exports.buildShareUrl = exports.buildAuthUrl = exports.hasNonce = exports.addNonce = exports.generateNonce = exports.verify = exports.sign = exports.fromBase64Url = exports.toBase64Url = exports.computeSharedSecret = exports.generateEphemeralKeyPair = exports.LocalIDClient = void 0;
+var LocalIDClient_1 = require("./LocalIDClient");
+Object.defineProperty(exports, "LocalIDClient", { enumerable: true, get: function () { return LocalIDClient_1.LocalIDClient; } });
+// Crypto utilities needed by the LocalID host app (re-exported for reuse)
 var keyPair_1 = require("./crypto/keyPair");
 Object.defineProperty(exports, "generateEphemeralKeyPair", { enumerable: true, get: function () { return keyPair_1.generateEphemeralKeyPair; } });
 Object.defineProperty(exports, "computeSharedSecret", { enumerable: true, get: function () { return keyPair_1.computeSharedSecret; } });
@@ -21,6 +21,9 @@ Object.defineProperty(exports, "hasNonce", { enumerable: true, get: function () 
 var builder_1 = require("./deeplink/builder");
 Object.defineProperty(exports, "buildAuthUrl", { enumerable: true, get: function () { return builder_1.buildAuthUrl; } });
 Object.defineProperty(exports, "buildShareUrl", { enumerable: true, get: function () { return builder_1.buildShareUrl; } });
+Object.defineProperty(exports, "buildAgentAuthUrl", { enumerable: true, get: function () { return builder_1.buildAgentAuthUrl; } });
+Object.defineProperty(exports, "buildDelegationUrl", { enumerable: true, get: function () { return builder_1.buildDelegationUrl; } });
+Object.defineProperty(exports, "buildAgeAssertionUrl", { enumerable: true, get: function () { return builder_1.buildAgeAssertionUrl; } });
 var parser_1 = require("./deeplink/parser");
 Object.defineProperty(exports, "parseCallback", { enumerable: true, get: function () { return parser_1.parseCallback; } });
 //# sourceMappingURL=index.js.map

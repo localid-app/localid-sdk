@@ -9,7 +9,7 @@ export declare class BackendClient {
     completeRequest(requestId: string, status: 'completed' | 'failed'): Promise<void>;
     private getWithHmac;
     fetchInitKeys(): Promise<{
-        authifyPublicKey: string;
+        localidPublicKey: string;
         signingKey: string;
     }>;
 }

@@ -9,7 +9,7 @@ const backendCrypto_1 = require("../utils/backendCrypto");
 // Simulate backend decryption (mirrors serverCrypto.decryptHttpRequest)
 function backendDecrypt(envelope, backendPrivHex) {
     const shared = ed25519_1.x25519.getSharedSecret((0, utils_1.hexToBytes)(backendPrivHex), (0, utils_1.hexToBytes)(envelope.pk));
-    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, undefined, (0, utils_1.utf8ToBytes)('authify-http-request-v1'), 32);
+    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, undefined, (0, utils_1.utf8ToBytes)('localid-http-request-v1'), 32);
     const padded = envelope.c.replace(/-/g, '+').replace(/_/g, '/');
     const pad = (4 - padded.length % 4) % 4;
     const data = new Uint8Array(Buffer.from(padded + '='.repeat(pad), 'base64'));
@@ -23,7 +23,7 @@ function backendEncrypt(data, sdkEphPubHex) {
     const respPriv = (0, utils_1.randomBytes)(32);
     const respPub = ed25519_1.x25519.getPublicKey(respPriv);
     const shared = ed25519_1.x25519.getSharedSecret(respPriv, (0, utils_1.hexToBytes)(sdkEphPubHex));
-    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, undefined, (0, utils_1.utf8ToBytes)('authify-http-response-v1'), 32);
+    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, undefined, (0, utils_1.utf8ToBytes)('localid-http-response-v1'), 32);
     const nonce = (0, utils_1.randomBytes)(12);
     const pt = (0, utils_1.utf8ToBytes)(JSON.stringify(data));
     const ct = (0, aes_1.gcm)(key, nonce).encrypt(pt);

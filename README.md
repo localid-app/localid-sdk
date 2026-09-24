@@ -1,8 +1,8 @@
-# @authify/sdk
+# @localid/sdk
 
-**The official SDK for integrating [Authify](https://authify.app) identity verification into your React Native app.**
+**The official SDK for integrating [LocalID](https://localid.ai) identity verification into your React Native app.**
 
-Authify is a privacy-first mobile identity wallet. Users enroll once by scanning a government-issued ID and completing face verification. Your app can then request authentication or specific identity attributes — the user sees a consent screen on their phone and approves exactly what to share. No data ever leaves the user's device or passes through a server.
+LocalID is a privacy-first mobile identity wallet. Users enroll once by scanning a government-issued ID and completing face verification. Your app can then request authentication or specific identity attributes — the user sees a consent screen on their phone and approves exactly what to share. No data ever leaves the user's device or passes through a server.
 
 ---
 
@@ -10,14 +10,14 @@ Authify is a privacy-first mobile identity wallet. Users enroll once by scanning
 
 > **Early Access — Phase 1**
 >
-> The Authify app is not yet publicly available. To request access to the Authify app for testing and integration, contact **hello@authify.app**.
+> The LocalID app is not yet publicly available. To request access to the LocalID app for testing and integration, contact **hello@localid.ai**.
 
 ---
 
 ## How it works
 
 ```
-Your App                              Authify (on user's phone)
+Your App                              LocalID (on user's phone)
 ─────────────────────────────────────────────────────────────────
 sdk.login({ userIdentifier })
   → encrypted deep link ──────────────▶  shows consent screen
@@ -30,17 +30,23 @@ sdk.onSuccess(response => {
 })
 ```
 
-All payloads are **end-to-end encrypted** (X25519 ECDH + AES-256-GCM) and **signed** (HMAC-SHA256). Nothing is readable in transit. Authify never sends data to a server — the callback goes directly from the Authify app to your app via deep link.
+All payloads are **end-to-end encrypted** (X25519 ECDH + AES-256-GCM) and **signed** (HMAC-SHA256). Nothing is readable in transit. LocalID never sends data to a server — the callback goes directly from the LocalID app to your app via deep link.
 
 ---
 
 ## Installation
 
+The SDK is distributed as a tarball on the [Releases](https://github.com/localid-app/localid-sdk/releases/latest) page (it is not yet on the npm registry). Download `localid-sdk-{version}.tgz`, then:
+
 ```bash
-npm install @authify/sdk
+npm install ./localid-sdk-0.3.0.tgz
 # or
-yarn add @authify/sdk
+yarn add ./localid-sdk-0.3.0.tgz
 ```
+
+The package installs as `@localid/sdk`, so imports are unchanged.
+
+> **Upgrading from 0.2.x:** 0.3.0 targets the LocalID app (`localid://` scheme, `localid-*` protocol constants) and is not compatible with earlier builds: 0.2.x cannot talk to the current LocalID app.
 
 ### Peer requirements
 
@@ -85,14 +91,14 @@ In `android/app/src/main/AndroidManifest.xml`, add an intent filter to your main
 ```typescript
 // sdk.ts
 import { Linking } from 'react-native';
-import { AuthifyClient } from '@authify/sdk';
+import { LocalIDClient } from '@localid/sdk';
 
-export const authify = new AuthifyClient(
+export const localid = new LocalIDClient(
   {
     appId: 'com.yourcompany.yourapp',
     returnScheme: 'yourapp',       // must match your registered URL scheme
     backend: {
-      url: 'https://authify-backend-64no.onrender.com',
+      url: 'https://localid-be.onrender.com',
       appId: 'YOUR_APP_UUID',      // from POST /apps/register
       appSecret: 'YOUR_APP_SECRET',
     },
@@ -102,32 +108,32 @@ export const authify = new AuthifyClient(
 
 // Fetch per-app cryptographic keys before making requests.
 // Call this once, as early as possible (e.g. in your root component's useEffect).
-await authify.initialize();
+await localid.initialize();
 ```
 
 ### 2. Register callbacks (in your root component)
 
 ```typescript
-import { authify } from './sdk';
+import { localid } from './sdk';
 
 useEffect(() => {
-  const unsubSuccess = authify.onSuccess(response => {
+  const unsubSuccess = localid.onSuccess(response => {
     console.log('Status:', response.status);   // 'success' | 'denied'
     console.log('Data:', response.data);        // approved identity fields
   });
 
-  const unsubError = authify.onError(error => {
+  const unsubError = localid.onError(error => {
     console.error(`[${error.code}] ${error.message}`);
   });
 
   // Route incoming deep links through the SDK
   const listener = Linking.addEventListener('url', ({ url }) => {
-    authify.handleCallback(url);
+    localid.handleCallback(url);
   });
 
   // Handle cold-start deep links
   Linking.getInitialURL().then(url => {
-    if (url) authify.handleCallback(url);
+    if (url) localid.handleCallback(url);
   });
 
   return () => {
@@ -142,23 +148,23 @@ useEffect(() => {
 
 ```typescript
 // Authentication — verify the user is who they say they are
-authify.login({ userIdentifier: 'user@example.com' });
+localid.login({ userIdentifier: 'user@example.com' });
 
 // Identity attributes — request specific fields
-authify.requestIdentity(['firstName', 'lastName', 'dob']);
+localid.requestIdentity(['firstName', 'lastName', 'dob']);
 
 // Age verification only
-authify.requestIdentity(['age_over_18']);
+localid.requestIdentity(['age_over_18']);
 
 // Multiple fields — user can toggle each one individually
-authify.requestIdentity(['firstName', 'lastName', 'email', 'phone', 'dob']);
+localid.requestIdentity(['firstName', 'lastName', 'email', 'phone', 'dob']);
 ```
 
 ---
 
 ## API Reference
 
-### `new AuthifyClient(config, openUrl)`
+### `new LocalIDClient(config, openUrl)`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -169,7 +175,7 @@ authify.requestIdentity(['firstName', 'lastName', 'email', 'phone', 'dob']);
 
 ```typescript
 interface BackendConfig {
-  url: string;       // Authify backend base URL
+  url: string;       // LocalID backend base URL
   appId: string;     // UUID assigned at app registration
   appSecret: string; // Hex secret from registration — authenticates backend requests
 }
@@ -186,19 +192,19 @@ Fetches per-app cryptographic keys from the backend and stores them for use in a
 - Throws in `NODE_ENV=production` when `backend` config is absent.
 
 ```typescript
-await authify.initialize();
+await localid.initialize();
 ```
 
 ---
 
 ### `client.login(opts?)`
 
-Requests authentication. Authify verifies the user's enrolled identity matches the provided identifier.
+Requests authentication. LocalID verifies the user's enrolled identity matches the provided identifier.
 
 ```typescript
-authify.login({ userIdentifier: 'user@example.com' });
-authify.login({ userIdentifier: '+14155552671' });
-authify.login(); // no identifier — Authify prompts user to confirm their identity
+localid.login({ userIdentifier: 'user@example.com' });
+localid.login({ userIdentifier: '+14155552671' });
+localid.login(); // no identifier — LocalID prompts user to confirm their identity
 ```
 
 ---
@@ -208,7 +214,7 @@ authify.login(); // no identifier — Authify prompts user to confirm their iden
 Requests specific identity attributes. The user sees per-field consent toggles and can approve or deny each field individually.
 
 ```typescript
-authify.requestIdentity(fields: IdentityField[])
+localid.requestIdentity(fields: IdentityField[])
 ```
 
 **Available fields:**
@@ -228,10 +234,10 @@ authify.requestIdentity(fields: IdentityField[])
 
 ### `client.handleCallback(url)`
 
-Call this from your deep link handler. Returns `true` if the URL was an Authify callback (handled); `false` if unrelated.
+Call this from your deep link handler. Returns `true` if the URL was an LocalID callback (handled); `false` if unrelated.
 
 ```typescript
-const handled = authify.handleCallback(url);
+const handled = localid.handleCallback(url);
 if (!handled) {
   // your own deep link routing
 }
@@ -244,14 +250,14 @@ if (!handled) {
 Register response handlers. Both return an unsubscribe function.
 
 ```typescript
-const unsub = authify.onSuccess((response: AuthifyResponse) => {
+const unsub = localid.onSuccess((response: LocalIDResponse) => {
   // response.status   — 'success' | 'denied'
   // response.data     — Record<string, unknown> — approved fields
   // response.requestId — correlates to the originating request
   // response.ts       — Unix timestamp
 });
 
-const unsubErr = authify.onError((error: AuthifyError) => {
+const unsubErr = localid.onError((error: LocalIDError) => {
   // error.code     — 'INVALID_SIGNATURE' | 'DECRYPTION_FAILED' | 'EXPIRED' | 'REPLAY_DETECTED' | 'UNKNOWN'
   // error.message  — human-readable description
 });
@@ -270,15 +276,15 @@ unsubErr();
 Every request and response is end-to-end encrypted using a fresh ephemeral keypair:
 
 ```
-Request:  ECDH(sdkEphPriv, authifyPub) → HKDF-SHA256("authify-request-v1")  → AES-256-GCM
-Response: ECDH(authifyEphPriv, sdkPub) → HKDF-SHA256("authify-response-v1") → AES-256-GCM
+Request:  ECDH(sdkEphPriv, localidPub) → HKDF-SHA256("localid-request-v1")  → AES-256-GCM
+Response: ECDH(localidEphPriv, sdkPub) → HKDF-SHA256("localid-response-v1") → AES-256-GCM
 ```
 
 Every URL is HMAC-SHA256 signed. Tampered or replayed URLs are rejected.
 
 ### Replay prevention
 
-Each payload includes a 32-byte random nonce and a Unix timestamp. Authify rejects:
+Each payload includes a 32-byte random nonce and a Unix timestamp. LocalID rejects:
 - Requests older than 5 minutes
 - Any nonce seen more than once
 
@@ -286,14 +292,14 @@ Each payload includes a 32-byte random nonce and a Unix timestamp. Authify rejec
 
 Starting with v0.2.0, each registered app has a unique HMAC signing key. `initialize()` fetches this key at startup so:
 - Every callback URL carries a signature that only your app can verify
-- Authify rejects requests signed with a different app's key
+- LocalID rejects requests signed with a different app's key
 - Error callbacks (rate limits, unknown app ID, etc.) are also signed
 
 The X25519 encryption keypair is still shared across all Phase 1 apps (the dev keypair in `src/crypto/devKeys.ts` is used as fallback when `initialize()` is not called or backend config is absent). Per-app encryption keys require Phase 2.
 
 ### No server, no tracking
 
-The SDK makes one network request at startup (`initialize()`) to fetch per-app cryptographic keys. All identity data flows directly between your app and the user's Authify app via encrypted deep links. Authify never sees your users' data.
+The SDK makes one network request at startup (`initialize()`) to fetch per-app cryptographic keys. All identity data flows directly between your app and the user's LocalID app via encrypted deep links. LocalID never sees your users' data.
 
 ---
 
@@ -302,14 +308,14 @@ The SDK makes one network request at startup (`initialize()`) to fetch per-app c
 ```typescript
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, Linking } from 'react-native';
-import { AuthifyClient, AuthifyResponse } from '@authify/sdk';
+import { LocalIDClient, LocalIDResponse } from '@localid/sdk';
 
-const authify = new AuthifyClient(
+const localid = new LocalIDClient(
   {
     appId: 'com.example.myapp',
     returnScheme: 'myapp',
     backend: {
-      url: 'https://authify-backend-64no.onrender.com',
+      url: 'https://localid-be.onrender.com',
       appId: 'YOUR_APP_UUID',
       appSecret: 'YOUR_APP_SECRET',
     },
@@ -318,25 +324,25 @@ const authify = new AuthifyClient(
 );
 
 export default function App() {
-  const [result, setResult] = useState<AuthifyResponse | null>(null);
+  const [result, setResult] = useState<LocalIDResponse | null>(null);
 
   useEffect(() => {
     // Fetch per-app keys before registering handlers or making requests
-    authify.initialize().catch(console.error);
+    localid.initialize().catch(console.error);
 
-    const unsubOk  = authify.onSuccess(r => setResult(r));
-    const unsubErr = authify.onError(e => console.error(e));
-    const listener = Linking.addEventListener('url', ({ url }) => authify.handleCallback(url));
-    Linking.getInitialURL().then(url => { if (url) authify.handleCallback(url); });
+    const unsubOk  = localid.onSuccess(r => setResult(r));
+    const unsubErr = localid.onError(e => console.error(e));
+    const listener = Linking.addEventListener('url', ({ url }) => localid.handleCallback(url));
+    Linking.getInitialURL().then(url => { if (url) localid.handleCallback(url); });
 
     return () => { unsubOk(); unsubErr(); listener.remove(); };
   }, []);
 
   return (
     <View>
-      <Button title="Verify Age (18+)"    onPress={() => authify.requestIdentity(['age_over_18'])} />
-      <Button title="Get Name + Email"    onPress={() => authify.requestIdentity(['firstName', 'lastName', 'email'])} />
-      <Button title="Authenticate User"   onPress={() => authify.login({ userIdentifier: 'user@example.com' })} />
+      <Button title="Verify Age (18+)"    onPress={() => localid.requestIdentity(['age_over_18'])} />
+      <Button title="Get Name + Email"    onPress={() => localid.requestIdentity(['firstName', 'lastName', 'email'])} />
+      <Button title="Authenticate User"   onPress={() => localid.login({ userIdentifier: 'user@example.com' })} />
       {result && <Text>{JSON.stringify(result.data, null, 2)}</Text>}
     </View>
   );
@@ -347,10 +353,10 @@ export default function App() {
 
 ## Releases
 
-Pre-built SDK packages are available on the [Releases](https://github.com/authify-app/authify-sdk/releases) page.
+Pre-built SDK packages are available on the [Releases](https://github.com/localid-app/localid-sdk/releases) page.
 
 Each release includes:
-- `authify-sdk-{version}.tgz` — installable npm tarball (`npm install ./authify-sdk-{version}.tgz`)
+- `localid-sdk-{version}.tgz` — installable npm tarball (`npm install ./localid-sdk-{version}.tgz`)
 - TypeScript type declarations (`.d.ts`)
 - Compiled CommonJS + ESM bundles
 
@@ -370,11 +376,11 @@ Each release includes:
 
 ## Early Access
 
-**The Authify app is currently in private early access.**
+**The LocalID app is currently in private early access.**
 
 To request access for your app:
 
-📧 **hello@authify.app**
+📧 **hello@localid.ai**
 
 Include:
 - Your app name and bundle ID
@@ -388,7 +394,7 @@ We'll get back to you within 48 hours.
 
 ## License
 
-MIT © 2026 Authify
+MIT © 2026 LocalID
 
 ---
 

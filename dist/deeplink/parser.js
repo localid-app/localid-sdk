@@ -6,24 +6,24 @@ const encrypt_1 = require("../crypto/encrypt");
 const nonceStore_1 = require("../session/nonceStore");
 const MAX_AGE_SECONDS = 300; // 5 minutes
 /**
- * Parse and validate an incoming authify-callback deep link URL.
- * Expected format: {scheme}://authify-callback?pk={ephPubKey}&c={ciphertext}&s={sig}
+ * Parse and validate an incoming localid-callback deep link URL.
+ * Expected format: {scheme}://localid-callback?pk={ephPubKey}&c={ciphertext}&s={sig}
  *
  * @param url  The raw deep link URL received by the caller app
- * @param pendingRequests  Map of requestId → sdkEphemeralPrivKeyHex (held by AuthifyClient)
+ * @param pendingRequests  Map of requestId → sdkEphemeralPrivKeyHex (held by LocalIDClient)
  * @param signingKey  Per-app HMAC signing key (hex). Omit to use the DEV_ONLY key.
  */
 function parseCallback(url, pendingRequests, signingKey) {
     try {
-        if (!url.includes('authify-callback')) {
-            return { ok: false, error: { code: 'UNKNOWN', message: 'Not an authify callback URL' } };
+        if (!url.includes('localid-callback')) {
+            return { ok: false, error: { code: 'UNKNOWN', message: 'Not an localid callback URL' } };
         }
         const queryStart = url.indexOf('?');
         if (queryStart === -1) {
             return { ok: false, error: { code: 'UNKNOWN', message: 'Missing query params' } };
         }
         const params = parseParams(url.slice(queryStart + 1));
-        // Error callback format: ?error=...&s=... (no pk/c — sent by Authify for rate-limit etc.)
+        // Error callback format: ?error=...&s=... (no pk/c — sent by LocalID for rate-limit etc.)
         if (params['error'] && !params['pk']) {
             const unsigned = url.slice(0, url.lastIndexOf('&s='));
             const s = params['s'] ?? '';
@@ -81,9 +81,13 @@ function parseCallback(url, pendingRequests, signingKey) {
         if (decrypted.status === 'error') {
             return {
                 ok: false,
-                error: { code: 'UNKNOWN', message: decrypted.message ?? 'Authify returned an error' },
+                error: { code: 'UNKNOWN', message: decrypted.message ?? 'LocalID returned an error' },
             };
         }
+        const d = decrypted.data ?? {};
+        const bool = (k) => typeof d[k] === 'boolean' ? d[k] : undefined;
+        const num = (k) => typeof d[k] === 'number' ? d[k] : undefined;
+        const str = (k) => typeof d[k] === 'string' ? d[k] : undefined;
         return {
             ok: true,
             response: {
@@ -91,6 +95,22 @@ function parseCallback(url, pendingRequests, signingKey) {
                 data: decrypted.data,
                 requestId: decrypted.requestId,
                 ts: decrypted.ts,
+                dynamicFaceAuthVerified: bool('dynamicFaceAuthVerified'),
+                // UC1
+                agentActionApproved: bool('agentActionApproved'),
+                approvedAction: str('approvedAction'),
+                approvedScope: str('approvedScope'),
+                approvalExpiresAt: num('approvalExpiresAt'),
+                // UC2
+                delegationGranted: bool('delegationGranted'),
+                delegationId: str('delegationId'),
+                grantedScopes: Array.isArray(d['grantedScopes']) ? d['grantedScopes'] : undefined,
+                delegationExpiresAt: num('delegationExpiresAt'),
+                // UC4
+                ageAssertionGranted: bool('ageAssertionGranted'),
+                isAboveThreshold: bool('isAboveThreshold'),
+                ageThreshold: num('ageThreshold'),
+                assertionExpiresAt: num('assertionExpiresAt'),
             },
         };
     }

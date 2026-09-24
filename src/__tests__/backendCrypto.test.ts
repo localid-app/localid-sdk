@@ -8,7 +8,7 @@ import { encryptHttpRequest, decryptHttpResponse } from '../utils/backendCrypto'
 // Simulate backend decryption (mirrors serverCrypto.decryptHttpRequest)
 function backendDecrypt(envelope: { pk: string; c: string }, backendPrivHex: string): unknown {
   const shared = x25519.getSharedSecret(hexToBytes(backendPrivHex), hexToBytes(envelope.pk));
-  const key = hkdf(sha256, shared, undefined, utf8ToBytes('authify-http-request-v1'), 32);
+  const key = hkdf(sha256, shared, undefined, utf8ToBytes('localid-http-request-v1'), 32);
   const padded = envelope.c.replace(/-/g, '+').replace(/_/g, '/');
   const pad = (4 - padded.length % 4) % 4;
   const data = new Uint8Array(Buffer.from(padded + '='.repeat(pad), 'base64'));
@@ -23,7 +23,7 @@ function backendEncrypt(data: unknown, sdkEphPubHex: string): { pk: string; c: s
   const respPriv = randomBytes(32);
   const respPub = x25519.getPublicKey(respPriv);
   const shared = x25519.getSharedSecret(respPriv, hexToBytes(sdkEphPubHex));
-  const key = hkdf(sha256, shared, undefined, utf8ToBytes('authify-http-response-v1'), 32);
+  const key = hkdf(sha256, shared, undefined, utf8ToBytes('localid-http-response-v1'), 32);
   const nonce = randomBytes(12);
   const pt = utf8ToBytes(JSON.stringify(data));
   const ct = gcm(key, nonce).encrypt(pt);

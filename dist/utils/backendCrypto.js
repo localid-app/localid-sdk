@@ -28,7 +28,7 @@ function encryptHttpRequest(body, backendPubKeyHex) {
     const sdkPriv = (0, utils_1.randomBytes)(32);
     const sdkPub = ed25519_1.x25519.getPublicKey(sdkPriv);
     const shared = ed25519_1.x25519.getSharedSecret(sdkPriv, (0, utils_1.hexToBytes)(backendPubKeyHex));
-    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, new Uint8Array(0), (0, utils_1.utf8ToBytes)('authify-http-request-v1'), 32);
+    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, new Uint8Array(0), (0, utils_1.utf8ToBytes)('localid-http-request-v1'), 32);
     const nonce = (0, utils_1.randomBytes)(12);
     const pt = (0, utils_1.utf8ToBytes)(JSON.stringify(body));
     const ct = (0, aes_1.gcm)(key, nonce).encrypt(pt);
@@ -43,7 +43,7 @@ function encryptHttpRequest(body, backendPubKeyHex) {
  */
 function decryptHttpResponse(response, sdkEphPrivKeyHex) {
     const shared = ed25519_1.x25519.getSharedSecret((0, utils_1.hexToBytes)(sdkEphPrivKeyHex), (0, utils_1.hexToBytes)(response.pk));
-    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, new Uint8Array(0), (0, utils_1.utf8ToBytes)('authify-http-response-v1'), 32);
+    const key = (0, hkdf_1.hkdf)(sha2_1.sha256, shared, new Uint8Array(0), (0, utils_1.utf8ToBytes)('localid-http-response-v1'), 32);
     const data = fromBase64Url(response.c);
     const nonce = data.slice(0, 12);
     const ct = data.slice(12);

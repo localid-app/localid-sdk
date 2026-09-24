@@ -1,14 +1,14 @@
-import { AuthifyConfig, AuthifyResponse, AuthifyError, IdentityField } from './types';
-type SuccessCallback = (response: AuthifyResponse) => void;
-type ErrorCallback = (error: AuthifyError) => void;
+import { LocalIDConfig, LocalIDResponse, LocalIDError, IdentityField, SdkAgentAuthRequest, SdkDelegationRequest } from './types';
+type SuccessCallback = (response: LocalIDResponse) => void;
+type ErrorCallback = (error: LocalIDError) => void;
 /** Function that opens a URL. Defaults to React Native's Linking.openURL but injectable for testing. */
 export type OpenUrlFn = (url: string) => Promise<void>;
 /**
- * AuthifyClient — main entry point for the Authify SDK.
+ * LocalIDClient — main entry point for the LocalID SDK.
  *
  * Usage:
  *   import { Linking } from 'react-native';
- *   const sdk = new AuthifyClient({ appId: 'com.myapp', returnScheme: 'myapp' }, Linking.openURL.bind(Linking));
+ *   const sdk = new LocalIDClient({ appId: 'com.myapp', returnScheme: 'myapp' }, Linking.openURL.bind(Linking));
  *   sdk.onSuccess(r => console.log(r.data));
  *   sdk.onError(e => console.error(e.code));
  *   sdk.login({ userIdentifier: 'user@example.com' });
@@ -16,11 +16,11 @@ export type OpenUrlFn = (url: string) => Promise<void>;
  *   // In your app's deep link handler:
  *   sdk.handleCallback(url);
  */
-export declare class AuthifyClient {
+export declare class LocalIDClient {
     private readonly config;
     private readonly openUrl;
     private readonly backendClient;
-    private authifyPublicKey;
+    private localidPublicKey;
     private signingKey;
     private initializePromise;
     private static readonly PENDING_TTL_MS;
@@ -33,7 +33,7 @@ export declare class AuthifyClient {
     private readonly pendingRequests;
     private successCallbacks;
     private errorCallbacks;
-    constructor(config: AuthifyConfig, openUrl: OpenUrlFn);
+    constructor(config: LocalIDConfig, openUrl: OpenUrlFn);
     /**
      * Fetch per-app cryptographic keys from the backend control plane and store them.
      * Must be called once after construction when a backend config is provided.
@@ -42,15 +42,30 @@ export declare class AuthifyClient {
      */
     initialize(): Promise<void>;
     private _doInitialize;
-    /** Initiate a login / authentication request against Authify. */
+    /** Initiate a login / authentication request against LocalID. */
     login(opts?: {
         userIdentifier?: string;
+        dynamicFaceAuth?: boolean;
     }): void;
-    /** Initiate an identity attribute request against Authify. */
-    requestIdentity(fields: IdentityField[]): void;
+    /** UC1: Request one-time human approval for a specific AI agent action. */
+    requestAgentAuth(agent: SdkAgentAuthRequest['agent'], opts?: {
+        dynamicFaceAuth?: boolean;
+    }): void;
+    /** UC2: Request standing delegation for a class of actions with a time limit. */
+    requestDelegation(delegation: SdkDelegationRequest['delegation'], opts?: {
+        dynamicFaceAuth?: boolean;
+    }): void;
+    /** UC4: Request a self-contained signed age assertion. DOB is never shared — only yes/no above threshold. */
+    requestAgeAssertion(minAge: number, validForSeconds?: number, opts?: {
+        dynamicFaceAuth?: boolean;
+    }): void;
+    /** Initiate an identity attribute request against LocalID. */
+    requestIdentity(fields: IdentityField[], opts?: {
+        dynamicFaceAuth?: boolean;
+    }): void;
     /**
      * Call this from your app's deep link handler whenever a URL arrives.
-     * Returns true if the URL was an authify-callback handled by this SDK;
+     * Returns true if the URL was an localid-callback handled by this SDK;
      * returns false if the URL is unrelated (let your app handle it normally).
      */
     handleCallback(url: string): boolean;
@@ -65,7 +80,7 @@ export declare class AuthifyClient {
      */
     onError(cb: ErrorCallback): () => void;
     /**
-     * Register this app with the Authify control plane.
+     * Register this app with the LocalID control plane.
      * TODO(PHASE_2): pass apiKey; exchange for per-app signing credentials
      */
     registerApp(): void;
@@ -81,4 +96,4 @@ export declare class AuthifyClient {
     private emitError;
 }
 export {};
-//# sourceMappingURL=AuthifyClient.d.ts.map
+//# sourceMappingURL=LocalIDClient.d.ts.map

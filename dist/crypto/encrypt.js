@@ -58,32 +58,32 @@ function fromBase64Url(str) {
 }
 // ── SDK-side (encrypt request, decrypt response) ──────────────────────────────
 /**
- * Encrypt a request payload for Authify.
- * Uses the SDK's ephemeral private key + Authify's public key for ECDH.
+ * Encrypt a request payload for LocalID.
+ * Uses the SDK's ephemeral private key + LocalID's public key for ECDH.
  *
  * @param plaintext  JSON-serialized request object
  * @param sdkEphPrivKeyHex  SDK's ephemeral private key (hex)
- * @param authifyPublicKeyHex  Authify's public key (hex). Omit to use the DEV_ONLY key.
+ * @param localidPublicKeyHex  LocalID's public key (hex). Omit to use the DEV_ONLY key.
  * @returns base64url-encoded `nonce || ciphertext`
  */
-function encryptRequest(plaintext, sdkEphPrivKeyHex, authifyPublicKeyHex) {
-    const pubKey = authifyPublicKeyHex ?? devKeys_1.AUTHIFY_DEV_PUBLIC_KEY;
+function encryptRequest(plaintext, sdkEphPrivKeyHex, localidPublicKeyHex) {
+    const pubKey = localidPublicKeyHex ?? devKeys_1.LOCALID_DEV_PUBLIC_KEY;
     const sharedSecret = (0, keyPair_1.computeSharedSecret)(sdkEphPrivKeyHex, pubKey);
-    const key = deriveKey(sharedSecret, 'authify-request-v1');
+    const key = deriveKey(sharedSecret, 'localid-request-v1');
     const encrypted = aesGcmEncrypt(key, (0, utils_1.utf8ToBytes)(plaintext));
     return toBase64Url(encrypted);
 }
 /**
- * Decrypt a response payload from Authify.
- * Uses the SDK's stored ephemeral private key + Authify's response ephemeral public key.
+ * Decrypt a response payload from LocalID.
+ * Uses the SDK's stored ephemeral private key + LocalID's response ephemeral public key.
  *
  * @param ciphertextB64  base64url-encoded `nonce || ciphertext` from callback c= param
- * @param authifyEphPubKeyHex  Authify's response ephemeral public key from callback pk= param
+ * @param localidEphPubKeyHex  LocalID's response ephemeral public key from callback pk= param
  * @param sdkEphPrivKeyHex  SDK's ephemeral private key stored from the original request
  */
-function decryptResponse(ciphertextB64, authifyEphPubKeyHex, sdkEphPrivKeyHex) {
-    const sharedSecret = (0, keyPair_1.computeSharedSecret)(sdkEphPrivKeyHex, authifyEphPubKeyHex);
-    const key = deriveKey(sharedSecret, 'authify-response-v1');
+function decryptResponse(ciphertextB64, localidEphPubKeyHex, sdkEphPrivKeyHex) {
+    const sharedSecret = (0, keyPair_1.computeSharedSecret)(sdkEphPrivKeyHex, localidEphPubKeyHex);
+    const key = deriveKey(sharedSecret, 'localid-response-v1');
     const data = fromBase64Url(ciphertextB64);
     const plaintext = aesGcmDecrypt(key, data);
     return new TextDecoder().decode(plaintext);

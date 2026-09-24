@@ -72,9 +72,9 @@ describe('BackendClient', () => {
             await client.initiateRequest('test-req-id', ['name']);
             expect(capturedRequest).not.toBeNull();
             const headers = capturedRequest.options.headers;
-            expect(headers['X-Authify-App-Id']).toBe(testConfig.appId);
-            expect(headers['X-Authify-Timestamp']).toBeDefined();
-            expect(headers['X-Authify-Signature']).toBeDefined();
+            expect(headers['X-LocalID-App-Id']).toBe(testConfig.appId);
+            expect(headers['X-LocalID-Timestamp']).toBeDefined();
+            expect(headers['X-LocalID-Signature']).toBeDefined();
             const body = JSON.parse(capturedRequest.options.body);
             expect(typeof body.pk).toBe('string');
             expect(typeof body.c).toBe('string');

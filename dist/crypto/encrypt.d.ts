@@ -18,23 +18,23 @@ export declare function toBase64Url(bytes: Uint8Array): string;
 /** base64url decode */
 export declare function fromBase64Url(str: string): Uint8Array;
 /**
- * Encrypt a request payload for Authify.
- * Uses the SDK's ephemeral private key + Authify's public key for ECDH.
+ * Encrypt a request payload for LocalID.
+ * Uses the SDK's ephemeral private key + LocalID's public key for ECDH.
  *
  * @param plaintext  JSON-serialized request object
  * @param sdkEphPrivKeyHex  SDK's ephemeral private key (hex)
- * @param authifyPublicKeyHex  Authify's public key (hex). Omit to use the DEV_ONLY key.
+ * @param localidPublicKeyHex  LocalID's public key (hex). Omit to use the DEV_ONLY key.
  * @returns base64url-encoded `nonce || ciphertext`
  */
-export declare function encryptRequest(plaintext: string, sdkEphPrivKeyHex: string, authifyPublicKeyHex?: string): string;
+export declare function encryptRequest(plaintext: string, sdkEphPrivKeyHex: string, localidPublicKeyHex?: string): string;
 /**
- * Decrypt a response payload from Authify.
- * Uses the SDK's stored ephemeral private key + Authify's response ephemeral public key.
+ * Decrypt a response payload from LocalID.
+ * Uses the SDK's stored ephemeral private key + LocalID's response ephemeral public key.
  *
  * @param ciphertextB64  base64url-encoded `nonce || ciphertext` from callback c= param
- * @param authifyEphPubKeyHex  Authify's response ephemeral public key from callback pk= param
+ * @param localidEphPubKeyHex  LocalID's response ephemeral public key from callback pk= param
  * @param sdkEphPrivKeyHex  SDK's ephemeral private key stored from the original request
  */
-export declare function decryptResponse(ciphertextB64: string, authifyEphPubKeyHex: string, sdkEphPrivKeyHex: string): string;
+export declare function decryptResponse(ciphertextB64: string, localidEphPubKeyHex: string, sdkEphPrivKeyHex: string): string;
 export { deriveKey, aesGcmEncrypt, aesGcmDecrypt, };
 //# sourceMappingURL=encrypt.d.ts.map

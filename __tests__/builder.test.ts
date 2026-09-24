@@ -1,9 +1,9 @@
 import { buildAuthUrl, buildShareUrl } from '../src/deeplink/builder';
 
 describe('Builder: buildAuthUrl', () => {
-  it('produces a valid authify://auth/v1 URL with pk, c, and s params', () => {
+  it('produces a valid localid://auth/v1 URL with pk, c, and s params', () => {
     const result = buildAuthUrl('com.test', 'testapp', 'user@example.com');
-    expect(result.url).toMatch(/^authify:\/\/auth\/v1\?pk=[^&]+&c=[^&]+&s=[a-f0-9]{64}$/);
+    expect(result.url).toMatch(/^localid:\/\/auth\/v1\?pk=[^&]+&c=[^&]+&s=[a-f0-9]{64}$/);
     expect(result.requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(result.keyPair.privateKeyHex).toHaveLength(64);
     expect(result.keyPair.publicKeyHex).toHaveLength(64);
@@ -29,9 +29,9 @@ describe('Builder: buildAuthUrl', () => {
 });
 
 describe('Builder: buildShareUrl', () => {
-  it('produces a valid authify://share/v1 URL', () => {
+  it('produces a valid localid://share/v1 URL', () => {
     const result = buildShareUrl('com.test', 'testapp', ['full_name', 'dob']);
-    expect(result.url).toMatch(/^authify:\/\/share\/v1\?pk=[^&]+&c=[^&]+&s=[a-f0-9]{64}$/);
+    expect(result.url).toMatch(/^localid:\/\/share\/v1\?pk=[^&]+&c=[^&]+&s=[a-f0-9]{64}$/);
   });
 
   it('does not include fields in plain URL params (fields are encrypted)', () => {

@@ -1,16 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthifyClient = void 0;
+exports.LocalIDClient = void 0;
 const builder_1 = require("./deeplink/builder");
 const parser_1 = require("./deeplink/parser");
 const stubs_1 = require("./monetization/stubs");
 const backendClient_1 = require("./utils/backendClient");
 /**
- * AuthifyClient — main entry point for the Authify SDK.
+ * LocalIDClient — main entry point for the LocalID SDK.
  *
  * Usage:
  *   import { Linking } from 'react-native';
- *   const sdk = new AuthifyClient({ appId: 'com.myapp', returnScheme: 'myapp' }, Linking.openURL.bind(Linking));
+ *   const sdk = new LocalIDClient({ appId: 'com.myapp', returnScheme: 'myapp' }, Linking.openURL.bind(Linking));
  *   sdk.onSuccess(r => console.log(r.data));
  *   sdk.onError(e => console.error(e.code));
  *   sdk.login({ userIdentifier: 'user@example.com' });
@@ -18,9 +18,9 @@ const backendClient_1 = require("./utils/backendClient");
  *   // In your app's deep link handler:
  *   sdk.handleCallback(url);
  */
-class AuthifyClient {
+class LocalIDClient {
     constructor(config, openUrl) {
-        this.authifyPublicKey = null;
+        this.localidPublicKey = null;
         this.signingKey = null;
         this.initializePromise = null;
         /**
@@ -54,21 +54,21 @@ class AuthifyClient {
     async _doInitialize() {
         if (!this.backendClient) {
             if (process.env.NODE_ENV === 'production') {
-                throw new Error('[authify-sdk] initialize() requires backend config in production');
+                throw new Error('[localid-sdk] initialize() requires backend config in production');
             }
             return;
         }
-        const { authifyPublicKey, signingKey } = await this.backendClient.fetchInitKeys();
-        this.authifyPublicKey = authifyPublicKey;
+        const { localidPublicKey, signingKey } = await this.backendClient.fetchInitKeys();
+        this.localidPublicKey = localidPublicKey;
         this.signingKey = signingKey;
     }
-    /** Initiate a login / authentication request against Authify. */
+    /** Initiate a login / authentication request against LocalID. */
     login(opts = {}) {
-        const built = (0, builder_1.buildAuthUrl)(this.config.appId, this.config.returnScheme, opts.userIdentifier, this.authifyPublicKey ?? undefined, this.signingKey ?? undefined);
+        const built = (0, builder_1.buildAuthUrl)(this.config.appId, this.config.returnScheme, opts.userIdentifier, this.localidPublicKey ?? undefined, this.signingKey ?? undefined, opts.dynamicFaceAuth);
         this.prunePendingRequests();
         this.pendingRequests.set(built.requestId, {
             privateKeyHex: built.keyPair.privateKeyHex,
-            expiresAt: Date.now() + AuthifyClient.PENDING_TTL_MS,
+            expiresAt: Date.now() + LocalIDClient.PENDING_TTL_MS,
         });
         (0, stubs_1.trackEvent)('auth_request', { appId: this.config.appId });
         if (this.backendClient) {
@@ -78,16 +78,55 @@ class AuthifyClient {
         }
         void this.openUrl(built.url).catch((err) => {
             this.pendingRequests.delete(built.requestId);
-            this.emitError({ code: 'UNKNOWN', message: `Failed to open Authify: ${String(err)}` });
+            this.emitError({ code: 'UNKNOWN', message: `Failed to open LocalID: ${String(err)}` });
         });
     }
-    /** Initiate an identity attribute request against Authify. */
-    requestIdentity(fields) {
-        const built = (0, builder_1.buildShareUrl)(this.config.appId, this.config.returnScheme, fields, this.authifyPublicKey ?? undefined, this.signingKey ?? undefined);
+    /** UC1: Request one-time human approval for a specific AI agent action. */
+    requestAgentAuth(agent, opts = {}) {
+        const built = (0, builder_1.buildAgentAuthUrl)(this.config.appId, this.config.returnScheme, agent, this.localidPublicKey ?? undefined, this.signingKey ?? undefined, opts.dynamicFaceAuth);
         this.prunePendingRequests();
         this.pendingRequests.set(built.requestId, {
             privateKeyHex: built.keyPair.privateKeyHex,
-            expiresAt: Date.now() + AuthifyClient.PENDING_TTL_MS,
+            expiresAt: Date.now() + LocalIDClient.PENDING_TTL_MS,
+        });
+        void this.openUrl(built.url).catch((err) => {
+            this.pendingRequests.delete(built.requestId);
+            this.emitError({ code: 'UNKNOWN', message: `Failed to open LocalID: ${String(err)}` });
+        });
+    }
+    /** UC2: Request standing delegation for a class of actions with a time limit. */
+    requestDelegation(delegation, opts = {}) {
+        const built = (0, builder_1.buildDelegationUrl)(this.config.appId, this.config.returnScheme, delegation, this.localidPublicKey ?? undefined, this.signingKey ?? undefined, opts.dynamicFaceAuth);
+        this.prunePendingRequests();
+        this.pendingRequests.set(built.requestId, {
+            privateKeyHex: built.keyPair.privateKeyHex,
+            expiresAt: Date.now() + LocalIDClient.PENDING_TTL_MS,
+        });
+        void this.openUrl(built.url).catch((err) => {
+            this.pendingRequests.delete(built.requestId);
+            this.emitError({ code: 'UNKNOWN', message: `Failed to open LocalID: ${String(err)}` });
+        });
+    }
+    /** UC4: Request a self-contained signed age assertion. DOB is never shared — only yes/no above threshold. */
+    requestAgeAssertion(minAge, validForSeconds = 3600, opts = {}) {
+        const built = (0, builder_1.buildAgeAssertionUrl)(this.config.appId, this.config.returnScheme, minAge, validForSeconds, this.localidPublicKey ?? undefined, this.signingKey ?? undefined, opts.dynamicFaceAuth);
+        this.prunePendingRequests();
+        this.pendingRequests.set(built.requestId, {
+            privateKeyHex: built.keyPair.privateKeyHex,
+            expiresAt: Date.now() + LocalIDClient.PENDING_TTL_MS,
+        });
+        void this.openUrl(built.url).catch((err) => {
+            this.pendingRequests.delete(built.requestId);
+            this.emitError({ code: 'UNKNOWN', message: `Failed to open LocalID: ${String(err)}` });
+        });
+    }
+    /** Initiate an identity attribute request against LocalID. */
+    requestIdentity(fields, opts = {}) {
+        const built = (0, builder_1.buildShareUrl)(this.config.appId, this.config.returnScheme, fields, this.localidPublicKey ?? undefined, this.signingKey ?? undefined, opts.dynamicFaceAuth);
+        this.prunePendingRequests();
+        this.pendingRequests.set(built.requestId, {
+            privateKeyHex: built.keyPair.privateKeyHex,
+            expiresAt: Date.now() + LocalIDClient.PENDING_TTL_MS,
         });
         (0, stubs_1.trackEvent)('identity_request', { appId: this.config.appId, fields });
         if (this.backendClient) {
@@ -97,16 +136,16 @@ class AuthifyClient {
         }
         void this.openUrl(built.url).catch((err) => {
             this.pendingRequests.delete(built.requestId);
-            this.emitError({ code: 'UNKNOWN', message: `Failed to open Authify: ${String(err)}` });
+            this.emitError({ code: 'UNKNOWN', message: `Failed to open LocalID: ${String(err)}` });
         });
     }
     /**
      * Call this from your app's deep link handler whenever a URL arrives.
-     * Returns true if the URL was an authify-callback handled by this SDK;
+     * Returns true if the URL was an localid-callback handled by this SDK;
      * returns false if the URL is unrelated (let your app handle it normally).
      */
     handleCallback(url) {
-        if (!url.includes('authify-callback'))
+        if (!url.includes('localid-callback'))
             return false;
         this.prunePendingRequests();
         const result = (0, parser_1.parseCallback)(url, this.pendingRequests, this.signingKey ?? undefined);
@@ -149,7 +188,7 @@ class AuthifyClient {
     }
     // ── Monetization stubs ──────────────────────────────────────────────────────
     /**
-     * Register this app with the Authify control plane.
+     * Register this app with the LocalID control plane.
      * TODO(PHASE_2): pass apiKey; exchange for per-app signing credentials
      */
     registerApp() {
@@ -183,6 +222,6 @@ class AuthifyClient {
             cb(error);
     }
 }
-exports.AuthifyClient = AuthifyClient;
-AuthifyClient.PENDING_TTL_MS = 5 * 60 * 1000;
-//# sourceMappingURL=AuthifyClient.js.map
+exports.LocalIDClient = LocalIDClient;
+LocalIDClient.PENDING_TTL_MS = 5 * 60 * 1000;
+//# sourceMappingURL=LocalIDClient.js.map

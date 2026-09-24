@@ -8,19 +8,19 @@ describe('Signing: HMAC-SHA256', () => {
   });
 
   it('verify accepts a valid signature', () => {
-    const msg = 'authify://auth/v1?pk=abc123&c=def456';
+    const msg = 'localid://auth/v1?pk=abc123&c=def456';
     const sig = sign(msg);
     expect(verify(msg, sig)).toBe(true);
   });
 
   it('verify rejects a tampered message', () => {
-    const msg = 'authify://auth/v1?pk=abc123&c=def456';
+    const msg = 'localid://auth/v1?pk=abc123&c=def456';
     const sig = sign(msg);
-    expect(verify('authify://auth/v1?pk=abc123&c=TAMPERED', sig)).toBe(false);
+    expect(verify('localid://auth/v1?pk=abc123&c=TAMPERED', sig)).toBe(false);
   });
 
   it('verify rejects a forged signature', () => {
-    const msg = 'authify://auth/v1?pk=abc123&c=def456';
+    const msg = 'localid://auth/v1?pk=abc123&c=def456';
     const fakeSig = 'a'.repeat(64);
     expect(verify(msg, fakeSig)).toBe(false);
   });
