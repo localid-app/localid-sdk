@@ -4,6 +4,17 @@ exports.parseCallback = parseCallback;
 const signing_1 = require("../crypto/signing");
 const encrypt_1 = require("../crypto/encrypt");
 const nonceStore_1 = require("../session/nonceStore");
+/** Error reasons LocalID can send that map onto a typed LocalIDError code. */
+const KNOWN_ERROR_CODES = [
+    'FACE_NOT_ENROLLED',
+    'FACE_VERIFICATION_FAILED',
+    'AGENT_ACTION_DENIED',
+    'DELEGATION_DENIED',
+    'AGE_REQUIREMENT_NOT_MET',
+    'CANCELLED',
+    'TIMEOUT',
+    'EXPIRED',
+];
 const MAX_AGE_SECONDS = 300; // 5 minutes
 /**
  * Parse and validate an incoming localid-callback deep link URL.
@@ -30,7 +41,13 @@ function parseCallback(url, pendingRequests, signingKey) {
             if (!(0, signing_1.verify)(unsigned, s, signingKey)) {
                 return { ok: false, error: { code: 'INVALID_SIGNATURE', message: 'HMAC verification failed on error callback' } };
             }
-            return { ok: false, error: { code: 'UNKNOWN', message: params['error'] } };
+            const reason = params['error'];
+            // LocalID sends the failure reason as the error value; surface the ones
+            // the SDK defines as typed codes so callers can branch on error.code.
+            const code = KNOWN_ERROR_CODES.includes(reason)
+                ? reason
+                : 'UNKNOWN';
+            return { ok: false, error: { code, message: reason } };
         }
         const pk = params['pk'];
         const c = params['c'];
@@ -95,7 +112,10 @@ function parseCallback(url, pendingRequests, signingKey) {
                 data: decrypted.data,
                 requestId: decrypted.requestId,
                 ts: decrypted.ts,
-                dynamicFaceAuthVerified: bool('dynamicFaceAuthVerified'),
+                // LocalID puts this at the top level of the payload, beside data.
+                dynamicFaceAuthVerified: typeof decrypted.dynamicFaceAuthVerified === 'boolean'
+                    ? decrypted.dynamicFaceAuthVerified
+                    : bool('dynamicFaceAuthVerified'),
                 // UC1
                 agentActionApproved: bool('agentActionApproved'),
                 approvedAction: str('approvedAction'),

@@ -39,14 +39,14 @@ All payloads are **end-to-end encrypted** (X25519 ECDH + AES-256-GCM) and **sign
 The SDK is distributed as a tarball on the [Releases](https://github.com/localid-app/localid-sdk/releases/latest) page (it is not yet on the npm registry). Download `localid-sdk-{version}.tgz`, then:
 
 ```bash
-npm install ./localid-sdk-0.3.0.tgz
+npm install ./localid-sdk-0.1.0.tgz
 # or
-yarn add ./localid-sdk-0.3.0.tgz
+yarn add ./localid-sdk-0.1.0.tgz
 ```
 
-The package installs as `@localid/sdk`, so imports are unchanged.
+The package installs as `@localid/sdk`.
 
-> **Upgrading from 0.2.x:** 0.3.0 targets the LocalID app (`localid://` scheme, `localid-*` protocol constants) and is not compatible with earlier builds: 0.2.x cannot talk to the current LocalID app.
+> **Developer preview.** 0.1.x is for evaluation; the request and response formats may change before 1.0.
 
 ### Peer requirements
 
@@ -290,7 +290,7 @@ Each payload includes a 32-byte random nonce and a Unix timestamp. LocalID rejec
 
 ### Per-app signing keys (live)
 
-Starting with v0.2.0, each registered app has a unique HMAC signing key. `initialize()` fetches this key at startup so:
+Each registered app has a unique HMAC signing key. `initialize()` fetches this key at startup so:
 - Every callback URL carries a signature that only your app can verify
 - LocalID rejects requests signed with a different app's key
 - Error callbacks (rate limits, unknown app ID, etc.) are also signed

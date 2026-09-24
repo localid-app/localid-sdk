@@ -37,6 +37,8 @@ interface CallbackOpts {
   nonceOverride?: string;
   tamperCiphertext?: boolean;
   tamperSignature?: boolean;
+  /** Sent by LocalID at the top level of the payload, not inside data. */
+  dynamicFaceAuthVerified?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ function buildCallbackUrl(sdkEphPubKeyHex: string, opts: CallbackOpts = {}): str
     status: opts.status ?? 'success',
     data: opts.data,
     message: opts.message,
+    dynamicFaceAuthVerified: opts.dynamicFaceAuthVerified,
   });
 
   // LocalID generates an ephemeral keypair for the response
@@ -281,5 +284,56 @@ describe('parseCallback — non-localid URLs', () => {
     const url = buildCallbackUrl(sdkKP.publicKeyHex, { requestId: 'req-nomatch' });
     const result = parseCallback(url, new Map()); // empty pending
     expect(result.ok).toBe(false);
+  });
+});
+
+// ── Error callbacks and top-level payload fields ──────────────────────────────
+
+/** Build an error callback exactly as LocalID's dispatchErrorCallback does. */
+function buildErrorCallbackUrl(message: string): string {
+  const unsigned = `${RETURN_SCHEME}://localid-callback?error=${encodeURIComponent(message)}`;
+  const sig = bytesToHex(hmac(sha256, hexToBytes(DEV_SIGNING_KEY), utf8ToBytes(unsigned)));
+  return `${unsigned}&s=${sig}`;
+}
+
+describe('parseCallback — error callbacks', () => {
+  it.each([
+    'AGE_REQUIREMENT_NOT_MET',
+    'FACE_VERIFICATION_FAILED',
+    'FACE_NOT_ENROLLED',
+    'AGENT_ACTION_DENIED',
+    'DELEGATION_DENIED',
+  ])('surfaces %s as a typed error code', (code) => {
+    const result = parseCallback(buildErrorCallbackUrl(code), new Map());
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe(code);
+    }
+  });
+
+  it('keeps UNKNOWN for codes the SDK does not define, preserving the message', () => {
+    const result = parseCallback(buildErrorCallbackUrl('RATE_LIMITED'), new Map());
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('UNKNOWN');
+      expect(result.error.message).toBe('RATE_LIMITED');
+    }
+  });
+});
+
+describe('parseCallback — dynamic face auth result', () => {
+  it('reads dynamicFaceAuthVerified from the top level of the payload', () => {
+    const sdkKP = generateEphemeralKeyPair();
+    const pending = new Map([['req-face', pendingEntry(sdkKP.privateKeyHex)]]);
+    const url = buildCallbackUrl(sdkKP.publicKeyHex, {
+      requestId: 'req-face',
+      data: { firstName: 'Alex' },
+      dynamicFaceAuthVerified: true,
+    });
+    const result = parseCallback(url, pending);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.response.dynamicFaceAuthVerified).toBe(true);
+    }
   });
 });

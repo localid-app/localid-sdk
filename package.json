@@ -1,6 +1,6 @@
 {
   "name": "@localid/sdk",
-  "version": "0.3.0",
+  "version": "0.1.0",
   "description": "LocalID SDK — deep-link authentication and identity for React Native apps",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -124,6 +124,8 @@ export interface SdkResponse {
   status: 'success' | 'denied' | 'error';
   data?: Record<string, unknown>;
   message?: string;
+  /** Set by LocalID at the top level when dynamic face auth ran. */
+  dynamicFaceAuthVerified?: boolean;
 }
 
 // ── SDK public types ──────────────────────────────────────────────────────────

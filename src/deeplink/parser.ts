@@ -3,6 +3,18 @@ import { decryptResponse } from '../crypto/encrypt';
 import { addNonce } from '../session/nonceStore';
 import { SdkResponse, LocalIDResponse, LocalIDError } from '../types';
 
+/** Error reasons LocalID can send that map onto a typed LocalIDError code. */
+const KNOWN_ERROR_CODES = [
+  'FACE_NOT_ENROLLED',
+  'FACE_VERIFICATION_FAILED',
+  'AGENT_ACTION_DENIED',
+  'DELEGATION_DENIED',
+  'AGE_REQUIREMENT_NOT_MET',
+  'CANCELLED',
+  'TIMEOUT',
+  'EXPIRED',
+] as const satisfies readonly LocalIDError['code'][];
+
 const MAX_AGE_SECONDS = 300; // 5 minutes
 
 export interface PendingEntry {
@@ -46,7 +58,13 @@ export function parseCallback(
       if (!verify(unsigned, s, signingKey)) {
         return { ok: false, error: { code: 'INVALID_SIGNATURE', message: 'HMAC verification failed on error callback' } };
       }
-      return { ok: false, error: { code: 'UNKNOWN', message: params['error'] } };
+      const reason = params['error'];
+      // LocalID sends the failure reason as the error value; surface the ones
+      // the SDK defines as typed codes so callers can branch on error.code.
+      const code = (KNOWN_ERROR_CODES as readonly string[]).includes(reason)
+        ? (reason as LocalIDError['code'])
+        : 'UNKNOWN';
+      return { ok: false, error: { code, message: reason } };
     }
 
     const pk = params['pk'];
@@ -126,7 +144,10 @@ export function parseCallback(
         data: decrypted.data,
         requestId: decrypted.requestId,
         ts: decrypted.ts,
-        dynamicFaceAuthVerified: bool('dynamicFaceAuthVerified'),
+        // LocalID puts this at the top level of the payload, beside data.
+        dynamicFaceAuthVerified: typeof decrypted.dynamicFaceAuthVerified === 'boolean'
+          ? decrypted.dynamicFaceAuthVerified
+          : bool('dynamicFaceAuthVerified'),
         // UC1
         agentActionApproved: bool('agentActionApproved'),
         approvedAction:      str('approvedAction'),
