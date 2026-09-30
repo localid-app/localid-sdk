@@ -207,14 +207,16 @@ localid.login({ userIdentifier: '+14155552671' });
 localid.login(); // no identifier — LocalID prompts user to confirm their identity
 ```
 
+Every request method accepts `{ dynamicFaceAuth: true }` (see [Dynamic face auth](#dynamic-face-auth)).
+
 ---
 
-### `client.requestIdentity(fields)`
+### `client.requestIdentity(fields, opts?)`
 
 Requests specific identity attributes. The user sees per-field consent toggles and can approve or deny each field individually.
 
 ```typescript
-localid.requestIdentity(fields: IdentityField[])
+localid.requestIdentity(fields: IdentityField[], opts?: { dynamicFaceAuth?: boolean })
 ```
 
 **Available fields:**
@@ -229,6 +231,33 @@ localid.requestIdentity(fields: IdentityField[])
 | `age_over_18` | `boolean` | `true` / `false` — DOB is never exposed |
 | `document_number` | `string` | Government ID document number |
 | `selfie_photo` | `string` | Enrollment selfie (base64 JPEG) |
+
+---
+
+### Dynamic face auth
+
+Face ID or a passcode proves that someone can unlock the phone. For high-stakes
+moments, pass `{ dynamicFaceAuth: true }` to any request: after Face ID, LocalID
+matches the person's live face against the photo on the government ID they
+enrolled with, on the phone. No face image leaves the device.
+
+- Match: the signed response carries `dynamicFaceAuthVerified: true`.
+- No match after three tries: nothing is shared and `onError` receives `FACE_VERIFICATION_FAILED`.
+- No face enrolled: `onError` receives `FACE_NOT_ENROLLED`.
+
+```typescript
+localid.login({ dynamicFaceAuth: true });
+localid.onSuccess(r => { if (r.dynamicFaceAuthVerified) { /* proceed */ } });
+```
+
+---
+
+### AI agent requests
+
+`requestAgentAuth`, `requestDelegation`, `requestAgeAssertion` and
+`checkDelegation` are documented in the [agent integration guide](./agent.md).
+Delegations are enforced by the LocalID backend: call `checkDelegation` before
+every action taken under a grant.
 
 ---
 
@@ -255,10 +284,17 @@ const unsub = localid.onSuccess((response: LocalIDResponse) => {
   // response.data     — Record<string, unknown> — approved fields
   // response.requestId — correlates to the originating request
   // response.ts       — Unix timestamp
+  // response.dynamicFaceAuthVerified — true when a requested face match passed
 });
 
 const unsubErr = localid.onError((error: LocalIDError) => {
-  // error.code     — 'INVALID_SIGNATURE' | 'DECRYPTION_FAILED' | 'EXPIRED' | 'REPLAY_DETECTED' | 'UNKNOWN'
+  // error.code — callback integrity: 'INVALID_SIGNATURE' | 'DECRYPTION_FAILED' | 'EXPIRED'
+  //               | 'REPLAY_DETECTED' | 'REQUEST_ID_MISMATCH'
+  //             — the person or LocalID declined: 'CANCELLED' | 'TIMEOUT'
+  //               | 'FACE_NOT_ENROLLED' | 'FACE_VERIFICATION_FAILED'
+  //               | 'AGENT_ACTION_DENIED' | 'DELEGATION_DENIED' | 'DELEGATION_UNAVAILABLE'
+  //               | 'AGE_REQUIREMENT_NOT_MET'
+  //             — anything else: 'UNKNOWN'
   // error.message  — human-readable description
 });
 
@@ -297,9 +333,18 @@ Each registered app has a unique HMAC signing key. `initialize()` fetches this k
 
 The X25519 encryption keypair is still shared across all Phase 1 apps (the dev keypair in `src/crypto/devKeys.ts` is used as fallback when `initialize()` is not called or backend config is absent). Per-app encryption keys require Phase 2.
 
-### No server, no tracking
+### What goes to the LocalID backend
 
-The SDK makes one network request at startup (`initialize()`) to fetch per-app cryptographic keys. All identity data flows directly between your app and the user's LocalID app via encrypted deep links. LocalID never sees your users' data.
+Identity data never touches a server: it travels between your app and the
+person's LocalID app in end-to-end encrypted deep links. When the `backend`
+option is configured, the SDK talks to the LocalID backend only for:
+
+- `initialize()` — fetch your app's signing key and LocalID's public key.
+- Request bookkeeping — each request's id and the *names* of the fields asked
+  for (never their values), encrypted to the backend, and whether it completed.
+- `checkDelegation()` — ask whether an agent action is allowed under a grant.
+
+No analytics or tracking.
 
 ---
 
